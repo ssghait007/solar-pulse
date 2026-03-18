@@ -10,7 +10,7 @@ import { join } from "path";
 import {
   init, login, stationId,
   getEarnings, getStatus, getAlarms, getDevices,
-  getMonthlyReport, extractVar, formatEnergy,
+  getMonthlyReport, extractVar, formatEnergy, sendDiscord,
 } from "./pvhub";
 import { generateWeeklyReportHTML, type WeeklyReportData, type DayData } from "./weekly-report-html";
 
@@ -285,6 +285,25 @@ async function main() {
   if (reportData.devicesOffline > 0) voiceParts.push("Warning: your inverter is offline.");
   if (emailSent) voiceParts.push("Report emailed.");
   speak(voiceParts.join(" "));
+
+  // Discord notification
+  const totalDevices = reportData.devicesOnline + reportData.devicesOffline + reportData.devicesFault;
+  await sendDiscord("", [{
+    title: `Weekly Solar: ${weekTotal.toFixed(1)} kWh`,
+    description: `${fmtDate(thisWeek.start)} – ${fmtDate(thisWeek.end)}, ${now.getFullYear()}`,
+    color: reportData.devicesOffline > 0 ? 0xdc2626 : 0x2563eb,
+    fields: [
+      { name: "Week Total", value: formatEnergy(weekTotal), inline: true },
+      { name: "vs Last Week", value: `${weekChange >= 0 ? "+" : ""}${weekChange.toFixed(1)}%`, inline: true },
+      { name: "Avg Daily", value: `${avgDaily.toFixed(1)} kWh`, inline: true },
+      { name: "Best Day", value: `${bestDay.date} — ${bestDay.generation.toFixed(1)} kWh`, inline: true },
+      { name: "Week Income", value: `${reportData.currency} ${weekIncome.toFixed(2)}`, inline: true },
+      { name: "Health", value: `${reportData.devicesOnline}/${totalDevices} online`, inline: true },
+      { name: "Month Progress", value: `${formatEnergy(monthGen)} in ${monthDaysElapsed}/${monthDaysTotal} days`, inline: false },
+    ],
+    footer: { text: "Solar Pulse Weekly Report" },
+    timestamp: now.toISOString(),
+  }]);
 
   // Stdout summary
   console.log(`  Week Total:   ${formatEnergy(weekTotal)}`);

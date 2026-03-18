@@ -145,3 +145,28 @@ export function formatEnergy(kwh: number): string {
   if (kwh >= 1000) return `${(kwh / 1000).toFixed(2)} MWh`;
   return `${kwh.toFixed(2)} kWh`;
 }
+
+// ─── Discord Webhook ─────────────────────────────────────────────────
+export async function sendDiscord(content: string, embeds?: any[]): Promise<boolean> {
+  const url = process.env.DISCORD_WEBHOOK_URL;
+  if (!url) return false;
+
+  try {
+    const body: any = { content };
+    if (embeds) body.embeds = embeds;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok || res.status === 204) {
+      console.log("  Discord: sent");
+      return true;
+    }
+    console.error(`  Discord failed: ${res.status}`);
+    return false;
+  } catch (err: any) {
+    console.error(`  Discord error: ${err.message}`);
+    return false;
+  }
+}

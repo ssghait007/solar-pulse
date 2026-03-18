@@ -7,7 +7,7 @@ import { execSync } from "child_process";
 import {
   init, login, stationId,
   getEarnings, getStatus, getMonthlyReport,
-  extractVar, formatEnergy,
+  extractVar, formatEnergy, sendDiscord,
 } from "./pvhub";
 
 function notify(title: string, message: string) {
@@ -82,6 +82,22 @@ async function main() {
   voiceParts.push(`Month total is ${monthGen.toFixed(1)} kilowatt hours.`);
   if (offline > 0) voiceParts.push(`Warning: your inverter is offline.`);
   speak(voiceParts.join(" "));
+
+  // Discord notification
+  await sendDiscord("", [{
+    title: notifTitle,
+    description: notifBody,
+    color: offline > 0 ? 0xdc2626 : todayGen > 0 ? 0x16a34a : 0x64748b,
+    fields: [
+      { name: "Today", value: `${formatEnergy(todayGen)}`, inline: true },
+      { name: "Income", value: `${currency} ${todayIncome.toFixed(2)}`, inline: true },
+      { name: "Month", value: `${formatEnergy(monthGen)}`, inline: true },
+      { name: "Inverter", value: inverterStatus, inline: true },
+      ...(power > 0 ? [{ name: "Power Now", value: `${power} kW`, inline: true }] : []),
+    ],
+    footer: { text: "Solar Pulse Daily Report" },
+    timestamp: now.toISOString(),
+  }]);
 
   // Also print to stdout (for log capture)
   console.log(`\n  Solar Daily Report - ${now.toLocaleDateString()}`);
